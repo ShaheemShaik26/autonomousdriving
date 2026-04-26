@@ -1,0 +1,50 @@
+services:
+  perception-service:
+    build:
+      context: .
+      dockerfile: docker/perception.Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PERCEPTION_CHECKPOINT=/app/checkpoints/perception.pt
+
+  prediction-service:
+    build:
+      context: .
+      dockerfile: docker/prediction.Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PREDICTION_CHECKPOINT=/app/checkpoints/prediction.pt
+
+  risk-service:
+    build:
+      context: .
+      dockerfile: docker/risk.Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: docker/orchestrator.Dockerfile
+    depends_on:
+      - perception-service
+      - prediction-service
+      - risk-service
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+    environment:
+      - PERCEPTION_URL=http://perception-service:8001
+      - PREDICTION_URL=http://prediction-service:8002
+      - RISK_URL=http://risk-service:8003
+      - PIPELINE_TRANSPORT=queue
+      - DATASET_ROOT=/app/data
